@@ -2,7 +2,7 @@
 
 ##### CARREGANDO OS PACOTES ##### 
 
-
+{
 
 # funcao de carregamento das livrarias (caso nao esteja instalado, sera feita a instalacao auto)
 instalar_e_carregar <- function(pacotes) {
@@ -15,7 +15,8 @@ instalar_e_carregar <- function(pacotes) {
 }
 
 # Lista de livrarias que serao utilizados 
-pacotes_necessarios <- c("dplyr","tidyr","ggplot2","lubridate","data.table","stringr")
+pacotes_necessarios <- c("dplyr","tidyr","ggplot2","lubridate",
+                         "data.table","stringr","janitor","gtsummary")
 
 #carregando pacotes 
 instalar_e_carregar(pacotes_necessarios)
@@ -80,6 +81,53 @@ sisu_2019_1 <- fread("ListagemChamadaRegular_2019_1.csv") %>% filter(SIGLA_IES =
 #sisu_2023_1 <- fread("ListagemChamadaRegular_2023_1.csv") %>% filter(sigla_ies == "UFRN")
 #sisu_2023_2 <- fread("ListagemChamadaRegular_2023_2.csv") %>% filter(sigla_ies == "UFRN")
 
+#PADRONIZANDO OS NOMES DAS COLUNAS DOS SISU - DICIONARIO
+padroniza_sisu <- function(df) {
+  df %>%
+    janitor::clean_names() %>%
+    rename_with(~tolower(.)) %>%
+    rename(
+      ano_sisu = any_of(c("nu_ano", "ano")),
+      edicao = any_of(c("nu_edicao", "edicao")),
+      etapa_codigo = any_of(c("co_etapa", "etapa")),
+      etapa_nome = ds_etapa,
+      
+      id_ies = any_of(c("cod_ies", "co_ies", "codigo_ies")),
+      nome_ies = any_of(c("ies", "no_ies", "nome_ies")),
+      uf_ies = any_of(c("uf_ies", "sg_uf_ies")),
+      
+      id_campus = any_of(c("cod_campus", "co_campus", "codigo_campus")),
+      nome_campus = any_of(c("campus", "no_campus", "nome_campus")),
+      
+      id_curso = any_of(c("codigo_curso", "co_ies_curso", "codigo_curso")),
+      nome_curso = any_of(c("nome_curso", "no_curso")),
+      
+      cpf = any_of(c("cpf", "nu_cpf")),
+      inscricao_enem = any_of(c("co_inscricao_enem", "inscricao_enem")),
+      
+      nome_candidato = any_of(c("no_inscrito", "inscrito")),
+      sexo = any_of(c("tp_sexo", "sexo")),
+      
+      nota_l = any_of(c("nu_nota_l", "nota_l")),
+      nota_ch = any_of(c("nu_nota_ch", "nota_ch")),
+      nota_cn = any_of(c("nu_nota_cn", "nota_cn")),
+      nota_m = any_of(c("nu_nota_m", "nota_m")),
+      nota_r = any_of(c("nu_nota_r", "nota_r")),
+      
+      nota_final = any_of(c("nota_concorrencia", "nu_nota_candidato", "nota_candidato")),
+      nota_corte = any_of(c("nu_notacorte", "nota_corte")),
+      
+      classificacao = any_of(c("nu_classificacao", "classificacao")),
+      aprovado = any_of(c("st_aprovado", "aprovado"))
+    )
+}
+
+sisu_2015_1 <- padroniza_sisu(sisu_2015_1)
+sisu_2016_1 <- padroniza_sisu(sisu_2016_1)
+sisu_2017_1 <- padroniza_sisu(sisu_2017_1)
+sisu_2018_1 <- padroniza_sisu(sisu_2018_1)
+sisu_2019_1 <- padroniza_sisu(sisu_2019_1)
+
 
 ##### TRATANTO O SISU 2015 PARA O MERGE -OK ##### 
 #TRATANTO O SISU 2015 PARA O MERGE
@@ -100,10 +148,28 @@ base15 <- subset(base,ano_ingresso == 2015 )
 #tem 3371 matriculas efeitvadas na Ufrn
 #ou seja a abase de 2015 corresponde a 69,5%
 
+
+#aqui não vai precisar
+#nomeando as colunas para deixar padrão em todas as bases
+#colnames(sisu_2016_1)
+
+#merge2015 <- merge2015 %>% select(
+#) 
+
+#setdiff(names(sisu_2016_1), names(sisu_2019_1))
+
 #proseguindo com o merge
 merge2015 <- base15 %>%
-  left_join(sisu_2015_1, by = c("nome" = "no_inscrito",
+  left_join(sisu_2015_1, by = c("nome" = "nome_candidato",
                                 "cpf_meio" = "cpf_meio"))
+
+#colnames(sisu_2019_1)
+#str(sisu_2019_1)
+#codigo_curso
+#renomeando para ficar padrão
+#merge2015 <- merge2015 %>% rename()
+
+
 rm(base15,sisu_2015_1)
 #base de 215 pronta.
 
@@ -119,16 +185,18 @@ sisu_2016_1 <- sisu_2016_1 %>%
   filter(st_matricula == "EFETIVADA" | 
            st_matricula == "SUBSTITUIDA" )
 
+#pra ficar nomenclatura igual de 2015
+#sisu_2016_1 <- rename()
 
 #mFILTRAR  A BASE PARA 2015
 base16 <- subset(base,ano_ingresso == 2016)
 
+#colnames(merge2018)
 
 #proseguindo com o merge
 merge2016 <- base16 %>%
-  left_join(sisu_2016_1, by = c("nome" = "no_inscrito",
+  left_join(sisu_2016_1, by = c("nome" = "nome_candidato",
                                 "cpf_meio" = "cpf_meio"))
-
 
 #teste com dois Cpf e Nomes e teste so com meio do cpf, ambos retorna 0 no merge
 #inner_join(base16, sisu_2016_1,
@@ -156,19 +224,25 @@ rm(base16,sisu_2016_1)
 #    cpf_meio = str_replace_all(NU_CPF, "\\D", "")
 #  )
 
-
+sisu_2017_1 <- sisu_2017_1 %>%
+  mutate(
+    cpf = str_pad(cpf, 11, pad = "0"),
+    cpf_meio = str_sub(cpf, 4, 11)
+  )
 
 #TRATANTO O SISU 2017 PARA O MERGE - AQUI É DIFERENTE 
 #sisu_2017_1 <- sisu_2017_1 %>%
 #  mutate(
 #    cpf_meio = str_extract(NU_CPF, "\\d{6}") #SEPARANDO O CPF (APENAS OS NUMEROS DISPONIVEIS)
 #  ) #%>% select(NU_CPF,cpf_meio)
-sisu_2017_1 <- sisu_2017_1 %>%
-  mutate(
-    cpf_meio = str_remove_all(NU_CPF, "[^0-9]")
-  ) #%>% select(cpf,cpf_meio)
+#sisu_2017_1 <- sisu_2017_1 %>%
+#  mutate(
+#    cpf_meio = str_remove_all(cpf, "[^0-9]")
+#  ) #%>% select(cpf,cpf_meio)
 
-
+#removendo os pontos
+sisu_2017_1 <- sisu_2017_1 %>% 
+  mutate(cpf_meio = str_remove_all(cpf_meio, "[.-]"))
 #SEPARANDO O CPF DA MESMA FORMA QUE REALIZEI NA BASE
 #sisu_2017_1t <- sisu_2017_1 %>%
 #  mutate(
@@ -178,7 +252,7 @@ sisu_2017_1 <- sisu_2017_1 %>%
 
 #mantendo apenas matriculas efetivadas
 sisu_2017_1 <- sisu_2017_1 %>%
-  filter(ST_APROVADO == "S")
+  filter(aprovado == "S")
 
 #teste <- sisu_2017_1 %>% select(NO_CURSO,NO_INSCRITO,ST_APROVADO)
 
@@ -189,8 +263,9 @@ base17 <- subset(base,ano_ingresso == 2017) #questionamento a base tem um numero
 #merge 2017 - BAQUI NÃO FUNCINOU O MERGE COM CPF E NOME, 
 #ENTÃO MANTIVE apenas o nome, por com Cpf não encontra
 #teste com dois Cpf e Nomes e teste so com meio do cpf, ambos retorna 0 no merge
+
 #inner_join(base17, sisu_2017_1,
-#           by = c("nome" = "NO_INSCRITO",
+#           by = c("nome" = "nome_candidato",
 #                  "cpf_meio" = "cpf_meio")) %>% 
 # nrow()
 
@@ -199,13 +274,13 @@ base17 <- subset(base,ano_ingresso == 2017) #questionamento a base tem um numero
 #  nrow()
 #str(base$cpf_meio)
 #inner_join(base17, sisu_2017_1,
-#           by = c("nome" = "NO_INSCRITO")) %>% 
+#           by = c("nome" = "nome_candidato")) %>% 
 #  nrow()
 
 
 #solução utilizar o nome - funciona bem
 merge2017 <- base17 %>%
-  left_join(sisu_2017_1, by = c("nome" = "NO_INSCRITO")) #%>% 
+  left_join(sisu_2017_1, by = c("nome" = "nome_candidato")) #%>% 
   #select(nome,nome_curso,cpf_meio.x,cpf_meio.y,ST_APROVADO,)
 
 
@@ -215,8 +290,8 @@ merge2017 <- base17 %>%
 #head(sisu_2017_1$NO_INSCRITO)
 
 #numero de merge, se der 0 é pq não encontrou nenhum
-#inner_join(base15, sisu_2015_1,
-#           by = c("nome" = "NO_INSCRITO",
+#inner_join(base17, sisu_2017_1,
+#           by = c("nome" = "nome_candidato",
 #                  "cpf_meio" = "cpf_meio")) %>% 
 #  nrow()
 
@@ -228,23 +303,27 @@ rm(base17,sisu_2017_1)
 #SEPARANDO O CPF DA MESMA FORMA QUE REALIZEI NA BASE - mesmo assim cof fica cagado
 sisu_2018_1 <- sisu_2018_1 %>%
   mutate(
-    CPF = str_pad(CPF, 11, pad = "0"),
-    cpf_meio = str_sub(CPF, 4, 11)
+    cpf = str_pad(cpf, 11, pad = "0"),
+    cpf_meio = str_sub(cpf, 4, 11)
   ) #%>%  select(NU_CPF,cpf_meio)
+
+#removendo os pontos
+sisu_2018_1 <- sisu_2018_1 %>% 
+  mutate(cpf_meio = str_remove_all(cpf_meio,"\\."))
+
 
 #mantendo apenas matriculas efetivadas ou substituida pela mesma UF
 sisu_2018_1 <- sisu_2018_1 %>%
-  filter(MATRICULA == "SUBSTITU\xcdDA MESMA IES" | 
-           MATRICULA == "EFETIVADA" )
+  filter(matricula == "SUBSTITU\xcdDA MESMA IES" | 
+           matricula == "EFETIVADA" )
 
 #filtrando para ficar so 2018
 base18 <- subset(base,ano_ingresso == 2018)
 
-
-#merge 2017 - BAQUI NÃO FUNCINOU O MERGE COM CPF E NOME, 
-#solução utilizar o nome - funciona bem
+#merge 2018 - MERGE COM CPF E NOME, 
 merge2018 <- base18 %>%
-  left_join(sisu_2018_1, by = c("nome" = "INSCRITO")) #%>% 
+  left_join(sisu_2018_1, by = c("nome" = "nome_candidato",
+                                "cpf_meio" = "cpf_meio")) #%>% 
 #select(nome,nome_curso,cpf_meio.x,cpf_meio.y,ST_APROVADO,)
 
 rm(base18,sisu_2018_1)
@@ -255,19 +334,20 @@ rm(base18,sisu_2018_1)
 #SEPARANDO O CPF DA MESMA FORMA QUE REALIZEI NA BASE
 sisu_2019_1 <- sisu_2019_1 %>%
   mutate(
-    NU_CPF = str_pad(NU_CPF, 11, pad = "0"),
-    cpf_meio = str_sub(NU_CPF, 4, 11)
+    cpf = str_pad(cpf, 11, pad = "0"),
+    cpf_meio = str_sub(cpf, 4, 11)
   ) #%>%  select(NU_CPF,cpf_meio)
 
 #removendo os pontos
 sisu_2019_1 <- sisu_2019_1 %>% 
   mutate(cpf_meio = str_remove_all(cpf_meio,"\\."))
-str(sisu_2019_1$cpf_meio)
 
-colnames(sisu_2019_1)
 #mantendo apenas matriculas efetivadas
+#sisu_2019_1 <- sisu_2019_1 %>%
+#  filter(ST_APROVADO == "S")
+
 sisu_2019_1 <- sisu_2019_1 %>%
-  filter(ST_APROVADO == "S")
+  filter(st_matricula == "EFETIVADA" )
 
 #teste <- sisu_2017_1 %>% select(NO_CURSO,NO_INSCRITO,ST_APROVADO)
 
@@ -277,11 +357,282 @@ base19 <- subset(base,ano_ingresso == 2019) #questionamento a base tem um numero
 
 #merge 2019 - MERGE COM CPF E NOME, 
 merge2019 <- base19 %>%
-  left_join(sisu_2019_1, by = c("nome" = "NO_INSCRITO",
+  left_join(sisu_2019_1, by = c("nome" = "nome_candidato",
                                 "cpf_meio" = "cpf_meio")) #%>% 
 #select(nome,nome_curso,cpf_meio.x,cpf_meio.y,ST_APROVADO,)
 
 rm(base19,sisu_2019_1)
 #2019 ok
 
+#ajuste para o merge
 
+#ajustando o titulo de 2018 pra ficar padrão
+merge2018 <- merge2018 %>%
+  rename(dt_nascimento = data_nascimento)
+
+
+# função para extrair ano e Padronizar dt_nascimeto
+extrair_ano <- function(x) {
+  ano_str <- str_extract(x, "\\d{2,4}$") # pega final
+  ano_num <- as.numeric(ano_str)
+  
+  ano_final <- ifelse(
+    nchar(ano_str) == 4, 
+    ano_num, 
+    ifelse(ano_num <= 25, 2000 + ano_num, 1900 + ano_num)
+  )
+  
+  return(ano_final)
+}
+
+merge2016 <- merge2016 %>%
+  mutate(dt_nascimento = extrair_ano(dt_nascimento))
+
+merge2017 <- merge2017 %>%
+  mutate(dt_nascimento = extrair_ano(dt_nascimento))
+
+merge2018 <- merge2018 %>%
+  mutate(dt_nascimento = extrair_ano(dt_nascimento))
+
+merge2019 <- merge2019 %>%
+  mutate(dt_nascimento = extrair_ano(dt_nascimento))
+
+#ajusta pra ficar numerico
+merge2015 <- merge2015 %>%
+  mutate(dt_nascimento = as.numeric(dt_nascimento))
+
+#ajustando tirando , e adicinando o ponto e class como numerico da 2019
+merge2019 <- merge2019 %>%
+  mutate(nota_corte = str_replace(nota_corte, ",", "."),
+         nota_corte = as.numeric(nota_corte))
+
+merge2019 <- merge2019 %>%
+  mutate(classificacao = as.integer(classificacao))
+
+#apagando a coluna de bonus que ja nao funciona e so atrapalha o merge
+merge2019 <- merge2019 %>%
+  select(-nu_percentual_bonus)
+
+
+#Juntar tudo
+base_final <- bind_rows(
+  merge2015,
+  merge2016,
+  merge2017,
+  merge2018,
+  merge2019
+)
+
+rm(base,merge2015,merge2016,merge2017,merge2018,merge2019)
+}
+
+
+base_desc <- base_final %>%
+  select(
+    sexo.x,
+    discente_estudou_em_escola_publica,
+    status,
+    unidade_responsavel,
+    idade,
+    raca,
+    cota,
+    bolsa_assistencia,
+    bolsa_institucional
+  ) %>%
+  
+  # transformando dummies em fator
+  mutate(
+    cota = factor(cota, levels = c(0,1), labels = c("Não", "Sim")),
+    
+    bolsa_assistencia = factor(
+      bolsa_assistencia,
+      levels = c(0,1),
+      labels = c("Não", "Sim")
+    ),
+    
+    bolsa_institucional = factor(
+      bolsa_institucional,
+      levels = c(0,1),
+      labels = c("Não", "Sim")
+    )
+  )
+
+# tabela descritiva
+tabela_desc <- base_desc %>%
+  tbl_summary(
+    statistic = list(
+      all_continuous() ~ "{mean} ({sd})",
+      all_categorical() ~ "{n} ({p}%)"
+    ),
+    digits = all_continuous() ~ 2
+  ) %>%
+  bold_labels()
+
+tabela_desc
+
+
+
+
+#tabela para raça 
+tabela_raça <- base_desc %>%
+  tbl_summary(
+    by = raca,
+    statistic = list(
+      all_continuous() ~ "{mean} ({sd})",
+      all_categorical() ~ "{n} ({p}%)"
+    ),
+    digits = all_continuous() ~ 2
+  ) %>%
+  bold_labels()
+
+
+tabela_raça
+
+
+#tabela para cota 
+tabela_cota <- base_desc %>%
+  tbl_summary(
+    by = cota,
+    statistic = list(
+      all_continuous() ~ "{mean} ({sd})",
+      all_categorical() ~ "{n} ({p}%)"
+    ),
+    digits = all_continuous() ~ 2
+  ) %>%
+  bold_labels()
+
+
+tabela_cota
+
+
+
+
+str(base_final)
+colnames(base_final)
+
+##### rascunhoss #####
+
+str(merge2015$nu_percentual_bonus)
+str(merge2016$nu_percentual_bonus)
+str(merge2017$nu_percentual_bonus)
+str(merge2018$nu_percentual_bonus)
+str(merge2019$nu_percentual_bonus)
+table(merge2019$nu_percentual_bonus)
+
+
+map(list(merge2015, merge2016, merge2017, merge2018, merge2019), glimpse)
+
+
+
+
+
+str(merge2015$dt_nascimento)
+
+colnames(merge2018)
+
+#install.packages("gtsummary")
+# selecionando variáveis
+
+#jutando todas as pastas
+library(janitor)
+
+padroniza_nomes <- function(df) {
+  df %>% clean_names()
+}
+
+merge2015 <- padroniza_nomes(merge2015)
+merge2016 <- padroniza_nomes(merge2016)
+merge2017 <- padroniza_nomes(merge2017)
+merge2018 <- padroniza_nomes(merge2018)
+merge2019 <- padroniza_nomes(merge2019)
+
+#ajustando as colunas diferentes
+resolve_duplicadas <- function(df) {
+  
+  # CPF
+  if ("cpf_x" %in% names(df) | "cpf_y" %in% names(df)) {
+    df <- df %>%
+      mutate(
+        cpf = dplyr::coalesce(
+          !!!dplyr::select(., any_of(c("cpf_x", "cpf_y", "cpf")))
+        )
+      )
+  }
+  
+  # nome_curso
+  if ("nome_curso_x" %in% names(df) | "nome_curso_y" %in% names(df)) {
+    df <- df %>%
+      mutate(
+        nome_curso = dplyr::coalesce(
+          !!!dplyr::select(., any_of(c("nome_curso_x", "nome_curso_y", "nome_curso")))
+        )
+      )
+  }
+  
+  # remove colunas .x e .y
+  df %>%
+    select(-ends_with("_x"), -ends_with("_y"))
+}
+
+merge2015 <- resolve_duplicadas(merge2015)
+merge2016 <- resolve_duplicadas(merge2016)
+
+colnames(merge2015)
+#com atenção aqui
+padroniza_variaveis <- function(df) {
+  df %>%
+    rename(
+      ano_sisu = coalesce(nu_ano, ano),
+      edicao = coalesce(nu_edicao, edicao),
+      inscricao_enem = coalesce(co_inscricao_enem, inscricao_enem),
+      nota_l = coalesce(nu_nota_l, nota_l),
+      nota_ch = coalesce(nu_nota_ch, nota_ch),
+      nota_cn = coalesce(nu_nota_cn, nota_cn),
+      nota_m = coalesce(nu_nota_m, nota_m),
+      nota_r = coalesce(nu_nota_r, nota_r),
+      nota_total = coalesce(nota_concorrencia, nota_candidato),
+      classificacao = coalesce(nu_classificacao, classificacao),
+      aprovado = coalesce(st_aprovado, aprovado)
+    )
+}
+
+#aplicação
+merge2015 <- padroniza_variaveis(merge2015)
+merge2016 <- padroniza_variaveis(merge2016)
+merge2017 <- padroniza_variaveis(merge2017)
+merge2018 <- padroniza_variaveis(merge2018)
+
+
+#ver os nomes das colunas 
+lista_nomes <- list(
+  merge2015 = names(merge2015),
+  merge2016 = names(merge2016),
+  merge2017 = names(merge2017),
+  merge2018 = names(merge2018),
+  merge2019 = names(merge2019)
+)
+
+todas_colunas <- unique(unlist(lista_nomes))
+
+todas_colunas
+length(todas_colunas)
+
+#ver colunas nas bases
+presenca <- sapply(lista_nomes, function(x) todas_colunas %in% x)
+
+presenca <- as.data.frame(presenca)
+rownames(presenca) <- todas_colunas
+
+presenca
+colnames(merge2017)
+
+
+#verificar se precisa mesmo
+merge2015$ano_base <- 2015
+merge2016$ano_base <- 2016
+merge2017$ano_base <- 2017
+merge2018$ano_base <- 2018
+
+#ver o que esta solto
+setdiff(names(merge2015), names(merge2017))
+setdiff(names(merge2017), names(merge2015))
